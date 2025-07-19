@@ -52,13 +52,10 @@ async def register_password(message: types.Message, state: FSMContext):
         async with session.post(f"{API_BASE}/register/", json={"username": username, "password": password}) as resp:
             if resp.status == 201:
                 await message.answer("✅ Вы успешно зарегистрированы! Теперь войдите через /login.")
-                await state.clear()  # Чистим состояние после регистрации
-
+                await state.clear()
             else:
-                # Ошибка регистрации — не чистим, чтобы пользователь мог повторить ввод
                 text = await resp.text()
                 await send_long_message(message.bot, message.chat.id, f"Ошибка регистрации: {text}")
-
 
 @router.message(Command("login"))
 async def login_start(message: types.Message, state: FSMContext):
@@ -101,7 +98,6 @@ async def get_subjects(message: types.Message, state: FSMContext):
     headers = {}
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
-
 
     async with aiohttp.ClientSession() as session:
         async with session.get(f"{API_BASE}/subjects/", headers=headers) as resp:
@@ -249,7 +245,6 @@ async def check_token(message: types.Message, state: FSMContext):
         await message.answer(f"Токен есть: {token[:20]}...")  # показываем начало токена
     else:
         await message.answer("Токен отсутствует!")
-
 
 @router.message(Command("start"))
 async def start(message: types.Message):
