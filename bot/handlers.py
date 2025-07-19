@@ -11,8 +11,6 @@ API_BASE = "http://localhost:8000/api"
 
 router = Router()
 
-# --- Состояния FSM
-
 class RegisterForm(StatesGroup):
     username = State()
     password = State()
@@ -27,15 +25,11 @@ class TestPassing(StatesGroup):
     current_index = State()
     answers = State()
 
-# --- Помощник для длинных сообщений
-
 async def send_long_message(bot, chat_id, text, max_length=4000):
     while text:
         chunk = html.escape(text[:max_length])
         text = text[max_length:]
         await bot.send_message(chat_id, chunk, parse_mode="HTML")
-
-# --- Команда /register
 
 @router.message(Command("register"))
 async def register_start(message: types.Message, state: FSMContext):
@@ -65,7 +59,6 @@ async def register_password(message: types.Message, state: FSMContext):
                 text = await resp.text()
                 await send_long_message(message.bot, message.chat.id, f"Ошибка регистрации: {text}")
 
-# --- Команда /login
 
 @router.message(Command("login"))
 async def login_start(message: types.Message, state: FSMContext):
@@ -83,7 +76,6 @@ async def login_password(message: Message, state: FSMContext):
     data = await state.get_data()
     username = data["username"]
     password = message.text
-
     async with aiohttp.ClientSession() as session:
         async with session.post(f"{API_BASE}/token/", json={"username": username, "password": password}) as resp:
             if resp.status == 200:
@@ -91,8 +83,8 @@ async def login_password(message: Message, state: FSMContext):
                 access_token = result.get("access")
                 refresh_token = result.get("refresh")
                 if access_token:
-                    await state.update_data(access_token=access_token, refresh_token=refresh_token)
                     await state.clear()
+                    await state.update_data(access_token=access_token, refresh_token=refresh_token)
                     await message.answer("✅ Авторизация прошла успешно!")
                 else:
                     await message.answer("⚠️ Ошибка: токен не получен.")
@@ -100,9 +92,6 @@ async def login_password(message: Message, state: FSMContext):
                 text = await resp.text()
                 await message.answer(f"❌ Неверные данные: {text}")
                 await state.clear()
-
-
-# --- Команда /subjects (список предметов)
 
 @router.message(Command("subjects"))
 async def get_subjects(message: types.Message, state: FSMContext):
@@ -127,8 +116,6 @@ async def get_subjects(message: types.Message, state: FSMContext):
                 ]
             )
             await message.answer("Выберите предмет:", reply_markup=keyboard)
-
-# --- Обработка выбора предмета и старт теста
 
 @router.callback_query(F.data.startswith("subject_"))
 async def start_test(callback: types.CallbackQuery, state: FSMContext):
@@ -161,8 +148,6 @@ async def start_test(callback: types.CallbackQuery, state: FSMContext):
             await callback.answer()
             await send_next_question(callback.message, state)
 
-# --- Отправка следующего вопроса
-
 async def send_next_question(message: types.Message, state: FSMContext):
     data = await state.get_data()
     index = data.get("current_index", 0)
@@ -180,8 +165,6 @@ async def send_next_question(message: types.Message, state: FSMContext):
         ]
     )
     await message.answer(f"❓ {q['text']}", reply_markup=keyboard)
-
-# --- Обработка ответа
 
 @router.callback_query(F.data.startswith("answer_"))
 async def handle_answer(callback: types.CallbackQuery, state: FSMContext):
@@ -201,8 +184,6 @@ async def handle_answer(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(current_index=index + 1, answers=answers)
     await callback.answer()
     await send_next_question(callback.message, state)
-
-# --- Завершение теста и отправка результатов
 
 async def finish_test(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -237,8 +218,6 @@ async def finish_test(message: types.Message, state: FSMContext):
     await state.clear()
     await state.update_data(access_token=access_token, refresh_token=refresh_token)
 
-# --- Команда /history для просмотра истории тестов
-
 @router.message(Command("history"))
 async def get_history(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -262,7 +241,6 @@ async def get_history(message: types.Message, state: FSMContext):
             else:
                 await message.answer("Ошибка при получении истории.")
 
-# --- Команда /start
 @router.message(Command("checktoken"))
 async def check_token(message: types.Message, state: FSMContext):
     data = await state.get_data()
